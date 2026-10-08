@@ -75,6 +75,8 @@
   .slot .s{font-size:13px;color:var(--accent);font-weight:650}
   .slot[disabled]{cursor:default;border-color:transparent;background:var(--taken);color:var(--taken-ink);box-shadow:none}
   .slot[disabled] .s{color:var(--taken-ink);font-weight:500}
+  .slot.class{background:repeating-linear-gradient(135deg,var(--taken) 0 8px,var(--bg) 8px 16px)}
+  .slot.class .s{font-weight:650}
   .skeleton{height:64px;border-radius:14px;background:var(--taken);animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{50%{opacity:.5}}
   .empty{grid-column:1/-1;padding:28px 16px;text-align:center;color:var(--muted);background:var(--surface);border-radius:14px;border:1px dashed var(--line)}
@@ -235,7 +237,7 @@ const API = 'https://script.google.com/macros/s/AKfycbzjE4WehcyHYWkvkI3Wr3xW-UC6
     get(k, d){ try { const v = localStorage.getItem('lb.'+k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
     set(k, v){ try { localStorage.setItem('lb.'+k, JSON.stringify(v)); } catch(e){} }
   };
-  const S = { cfg:null, lab:store.get('lab',''), date:null, booked:{}, today:'', now:0, loading:true, slot:null, busy:false, tab:'book', cancelling:null };
+  const S = { cfg:null, lab:store.get('lab',''), date:null, booked:{}, classes:{}, today:'', now:0, loading:true, slot:null, busy:false, tab:'book', cancelling:null };
   const toMin = t => { const p = String(t).split(':'); return +p[0]*60 + +p[1]; };
 
   // ── API ──
@@ -297,7 +299,7 @@ const API = 'https://script.google.com/macros/s/AKfycbzjE4WehcyHYWkvkI3Wr3xW-UC6
     try {
       const j = await api('booked', { date: want });
       if (want !== S.date) return;
-      if (j.ok) { S.booked = j.data.booked; S.today = j.data.today; S.now = j.data.nowMinutes; }
+      if (j.ok) { S.booked = j.data.booked; S.classes = j.data.classes || {}; S.today = j.data.today; S.now = j.data.nowMinutes; }
     } catch(e){ if (!quiet) toast('Could not load times. Check your connection.'); }
     S.loading = false; renderSlots();
   }
@@ -324,7 +326,7 @@ const API = 'https://script.google.com/macros/s/AKfycbzjE4WehcyHYWkvkI3Wr3xW-UC6
       b.children[0].textContent = d.date === S.today ? 'Today' : d.weekday;
       b.children[1].textContent = d.day;
       b.children[2].textContent = d.month;
-      b.onclick = () => { S.date = d.date; S.booked = {}; renderDates(); refresh(); };
+      b.onclick = () => { S.date = d.date; S.booked = {}; S.classes = {}; renderDates(); refresh(); };
       el.appendChild(b);
     });
   }
@@ -338,17 +340,20 @@ const API = 'https://script.google.com/macros/s/AKfycbzjE4WehcyHYWkvkI3Wr3xW-UC6
     }
     if (!S.date) { count.textContent = ''; el.innerHTML = '<div class="empty">No days are open for booking right now.</div>'; return; }
     const taken = S.booked[S.lab] || [];
+    const classes = S.classes[S.lab] || {};
     let free = 0;
     S.cfg.slots.forEach(s => {
       const isTaken = taken.indexOf(s.start) !== -1;
       const isPast = S.date === S.today && toMin(s.start) <= S.now;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'slot';
-      b.disabled = isTaken || isPast;
+      const cls = classes[s.start];
+      b.disabled = isTaken || isPast || !!cls;
+      if (cls) b.classList.add('class');
       if (!b.disabled) free++;
       b.innerHTML = '<span class="t"></span><span class="s"></span>';
       b.children[0].textContent = s.label;
-      b.children[1].textContent = isTaken ? 'Booked' : isPast ? 'Time passed' : 'Available';
+      b.children[1].textContent = cls ? 'Class · ' + cls : isTaken ? 'Booked' : isPast ? 'Time passed' : 'Available';
       b.onclick = () => openBook(s);
       el.appendChild(b);
     });
