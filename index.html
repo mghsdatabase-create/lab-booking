@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lab Booking">
+<meta name="description" content="Book the E-Learning and AutoCAD labs.">
+<title>Lab Booking</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bar:#1f6f6b; --bar-ink:#ffffff;
+    --bg:#f3f6f5; --surface:#ffffff; --ink:#15211f; --muted:#5d6b68; --line:#dde3e1;
+    --accent:#1f6f6b; --accent-ink:#ffffff; --accent-soft:#e1f0ee; --amber:#f2b134;
+    --taken:#eceeed; --taken-ink:#8a9592; --danger:#b3261e; --ok:#1f7a3f;
+    --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bar:#143f3c; --bg:#0f1514; --surface:#18201f; --ink:#e7eeec; --muted:#9aa8a5; --line:#2a3533;
+      --accent:#5fc2b8; --accent-ink:#06201d; --accent-soft:#183331;
+      --taken:#1f2826; --taken-ink:#66726f; --danger:#f2867e; --ok:#6fd18f; --shadow:none;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bar:#143f3c; --bg:#0f1514; --surface:#18201f; --ink:#e7eeec; --muted:#9aa8a5; --line:#2a3533;
+    --accent:#5fc2b8; --accent-ink:#06201d; --accent-soft:#183331;
+    --taken:#1f2826; --taken-ink:#66726f; --danger:#f2867e; --ok:#6fd18f; --shadow:none;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior-y:contain;user-select:none;-webkit-user-select:none}
+  input{user-select:text;-webkit-user-select:text}
+  button{font:inherit;color:inherit}
+  [hidden]{display:none!important}
+
+  /* ── App shell ── */
+  .app{display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto;background:var(--bg)}
+  .bar{background:var(--bar);color:var(--bar-ink);padding:calc(10px + env(safe-area-inset-top)) 16px 14px;display:flex;align-items:center;gap:12px;flex:none}
+  .bar img{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.12)}
+  .bar h1{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em;flex:1}
+  .bar small{display:block;font-size:12px;font-weight:500;opacity:.8;letter-spacing:0}
+  .chip-btn{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:7px 14px;font-size:14px;font-weight:600;cursor:pointer}
+  main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 16px 24px}
+  nav.tabs{flex:none;display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  nav.tabs button{border:0;background:none;padding:8px 0 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+  nav.tabs svg{width:26px;height:26px;padding:2px 14px;box-sizing:content-box;border-radius:999px}
+  nav.tabs button[aria-selected="true"]{color:var(--accent)}
+  nav.tabs button[aria-selected="true"] svg{background:var(--accent-soft)}
+  .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--amber);color:#3a2a00;font-size:11px;line-height:18px;margin-left:4px}
+
+  .label{margin:20px 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .labs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+  .labs button{border:0;background:transparent;font-weight:650;padding:12px 6px;border-radius:10px;cursor:pointer}
+  .labs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+  .dates{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -16px;padding-left:16px;padding-right:16px;scroll-snap-type:x proximity;scrollbar-width:none}
+  .dates::-webkit-scrollbar{display:none}
+  .dates button{flex:0 0 auto;scroll-snap-align:start;min-width:62px;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px 8px;cursor:pointer;text-align:center}
+  .dates .wd,.dates .mo{display:block;font-size:12px;color:var(--muted)}
+  .dates .dn{display:block;font-size:21px;font-weight:750;line-height:1.2}
+  .dates button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+  .dates button[aria-pressed="true"] .wd,.dates button[aria-pressed="true"] .mo{color:inherit;opacity:.85}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:20px 0 8px}
+  .row .label{margin:0}
+  .muted{font-size:14px;color:var(--muted)}
+  .slots{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media (min-width:520px){.slots{grid-template-columns:repeat(3,1fr)}}
+  .slot{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1.5px solid var(--accent);background:var(--surface);border-radius:14px;padding:12px;cursor:pointer;box-shadow:var(--shadow);transition:transform .08s}
+  .slot:active{transform:scale(.97)}
+  .slot .t{font-weight:650;font-size:15px}
+  .slot .s{font-size:13px;color:var(--accent);font-weight:650}
+  .slot[disabled]{cursor:default;border-color:transparent;background:var(--taken);color:var(--taken-ink);box-shadow:none}
+  .slot[disabled] .s{color:var(--taken-ink);font-weight:500}
+  .skeleton{height:64px;border-radius:14px;background:var(--taken);animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.5}}
+  .empty{grid-column:1/-1;padding:28px 16px;text-align:center;color:var(--muted);background:var(--surface);border-radius:14px;border:1px dashed var(--line)}
+  .install{display:flex;gap:12px;align-items:center;margin-top:16px;padding:12px 14px;border-radius:14px;background:var(--accent-soft)}
+  .install p{margin:0;flex:1;font-size:14px}
+  .install .btn{flex:none}
+
+  /* My bookings */
+  .card{background:var(--surface);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--line);margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:start}
+  .card h3{margin:0;font-size:16px}
+  .card .when{grid-column:1/2;color:var(--muted);font-size:14px}
+  .card .ref{grid-column:1/-1;font:600 13px ui-monospace,Menlo,monospace;color:var(--muted)}
+  .pill{grid-row:1;grid-column:2;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+  .pill.cancelled{background:var(--taken);color:var(--taken-ink)}
+  .pill.past{background:var(--taken);color:var(--muted)}
+  .card .act{grid-column:1/-1;display:flex;justify-content:flex-end;margin-top:6px}
+  .link{border:0;background:none;color:var(--danger);font-weight:650;font-size:14px;padding:6px 0;cursor:pointer}
+  .card.dim{opacity:.7;box-shadow:none}
+
+  /* Sheets & buttons */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10;opacity:0;pointer-events:none;transition:opacity .18s}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .sheet{width:100%;max-width:520px;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;transform:translateY(24px);transition:transform .2s}
+  .overlay.open .sheet{transform:none}
+  .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+  @media (min-width:560px){.overlay{align-items:center}.sheet{border-radius:22px;padding:20px 24px 24px}.grab{display:none}}
+  .sheet h2{margin:0 0 4px;font-size:20px}
+  .sheet .sub{margin:0 0 14px;color:var(--muted)}
+  label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}
+  label span{font-weight:400;color:var(--muted)}
+  input{width:100%;font:inherit;padding:13px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .err{color:var(--danger);font-size:14px;margin:12px 0 0;min-height:1.2em}
+  .actions{display:flex;gap:8px;margin-top:14px}
+  .btn{flex:1;font-weight:700;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+  .btn.small{padding:9px 14px;border-radius:12px;font-size:14px}
+  .btn[disabled]{opacity:.6}
+  .done{text-align:center;padding:4px 0}
+  .tick{width:60px;height:60px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;margin:4px auto 12px;font-size:32px}
+  .refbox{display:inline-block;margin:10px 0 2px;padding:6px 14px;border-radius:10px;background:var(--accent-soft);font:700 18px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.05em}
+  .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;text-align:center}
+  .toast.show{opacity:1}
+
+  /* Access-code gate */
+  .gate{position:fixed;inset:0;z-index:30;background:var(--bar);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px calc(24px + env(safe-area-inset-bottom));text-align:center}
+  .gate img{width:96px;height:96px;border-radius:24px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .gate h1{margin:20px 0 6px;font-size:26px}
+  .gate p{margin:0 0 22px;opacity:.85;max-width:300px}
+  .gate form{width:100%;max-width:320px}
+  .gate input{background:#fff;color:#15211f;border:0;text-align:center;font-size:20px;letter-spacing:.12em;text-transform:uppercase}
+  .gate .btn{width:100%;margin-top:12px;background:#fff;color:var(--bar);border:0}
+  .gate .err{color:#ffd9d6;text-align:center}
+</style>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <img src="icons/icon-512.png" alt="">
+  <h1>Lab Booking</h1>
+  <p>Book the E-Learning and AutoCAD labs. Enter the school access code to get started.</p>
+  <form id="gateForm" novalidate>
+    <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Access code" aria-label="Access code">
+    <p class="err" id="gateErr" role="alert"></p>
+    <button class="btn" id="gateBtn" type="submit">Continue</button>
+  </form>
+</div>
+
+<div class="app">
+  <header class="bar">
+    <img src="icons/maskable-192.png" alt="">
+    <h1><span id="barTitle">Book a lab</span><small id="barSub">E-Learning &amp; AutoCAD · 30-min sessions</small></h1>
+    <button class="chip-btn" id="installBtn" hidden>Install</button>
+  </header>
+
+  <main id="main">
+    <section id="tabBook">
+      <div class="label">Lab</div>
+      <div class="labs" id="labs" role="group" aria-label="Choose a lab"></div>
+      <div class="label">Day</div>
+      <div class="dates" id="dates" role="group" aria-label="Choose a day"></div>
+      <div class="row"><div class="label">Sessions</div><div class="muted" id="count"></div></div>
+      <div class="slots" id="slots"></div>
+      <div class="install" id="installCard" hidden>
+        <p><b>Get the app.</b> Install Lab Booking on your phone so it opens from its own icon.</p>
+        <button class="btn primary small" id="installBtn2">Install</button>
+      </div>
+    </section>
+    <section id="tabMine" hidden>
+      <div class="row"><div class="label">Upcoming</div></div>
+      <div id="upcoming"></div>
+      <div id="pastWrap" hidden>
+        <div class="row"><div class="label">Past &amp; cancelled</div></div>
+        <div id="past"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="navBook" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 10h18M12 13.5v4M10 15.5h4"/></svg>
+      Book
+    </button>
+    <button role="tab" id="navMine" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span>My bookings<span class="badge" id="badge" hidden></span></span>
+    </button>
+  </nav>
+</div>
+
+<div class="overlay" id="overlay" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="grab"></div>
+    <form id="form" novalidate>
+      <h2 id="sheetTitle">Book this session</h2>
+      <p class="sub" id="when"></p>
+      <label for="name">Your name</label>
+      <input id="name" autocomplete="name" maxlength="80">
+      <label for="cls">Class / Grade</label>
+      <input id="cls" maxlength="40" placeholder="e.g. 10B">
+      <label for="purpose">Purpose <span>(optional)</span></label>
+      <input id="purpose" maxlength="200" placeholder="e.g. AutoCAD project">
+      <p class="err" id="err" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="confirm">Confirm booking</button>
+      </div>
+    </form>
+    <div class="done" id="done" hidden>
+      <div class="tick" aria-hidden="true">✓</div>
+      <h2>You're booked</h2>
+      <p class="sub" id="doneWhen" style="margin:6px 0 0"></p>
+      <div class="refbox" id="doneRef"></div>
+      <p class="muted">You'll find it under <b>My bookings</b>.</p>
+      <div class="actions"><button type="button" class="btn primary" data-close>Done</button></div>
+    </div>
+    <div id="confirmCancel" hidden>
+      <h2>Cancel this booking?</h2>
+      <p class="sub" id="cancelWhen"></p>
+      <p class="muted">The time slot will become free for others to book.</p>
+      <p class="err" id="cancelErr" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="btn" data-close>Keep it</button>
+        <button type="button" class="btn danger" id="cancelYes">Cancel booking</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// Google Apps Script backend (the Lab Bookings Sheet)
+const API = 'https://script.google.com/macros/s/AKfycbzjE4WehcyHYWkvkI3Wr3xW-UC6P9LCyvjEMJ3hH5ZhNMMpUitmPM7YqfztZlbsgeLkiA/exec';
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem('lb.'+k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
+    set(k, v){ try { localStorage.setItem('lb.'+k, JSON.stringify(v)); } catch(e){} }
+  };
+  const S = { cfg:null, lab:store.get('lab',''), date:null, booked:{}, today:'', now:0, loading:true, slot:null, busy:false, tab:'book', cancelling:null };
+  const toMin = t => { const p = String(t).split(':'); return +p[0]*60 + +p[1]; };
+
+  // ── API ──
+  async function api(action, params, post){
+    const code = store.get('code','');
+    const body = Object.assign({ action, code }, params || {});
+    let res;
+    if (post) res = await fetch(API, { method:'POST', body: JSON.stringify(body) });
+    else res = await fetch(API + '?' + new URLSearchParams(body));
+    const j = await res.json();
+    if (!j.ok && j.error === 'code' && action !== 'config') showGate('The access code has changed. Please enter the new one.');
+    return j;
+  }
+
+  // ── Gate ──
+  function showGate(msg){ $('gate').hidden = false; $('gateErr').textContent = msg || ''; setTimeout(() => $('code').focus(), 50); }
+  $('gateForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = $('code').value.trim();
+    if (!code) { $('gateErr').textContent = 'Please enter the access code.'; return; }
+    $('gateBtn').disabled = true; $('gateBtn').textContent = 'Checking…'; $('gateErr').textContent = '';
+    store.set('code', code);
+    try {
+      const j = await api('config');
+      if (j.ok) { $('gate').hidden = true; start(j.data); }
+      else { store.set('code',''); $('gateErr').textContent = j.message || 'That code did not work.'; }
+    } catch(err) { $('gateErr').textContent = 'No connection. Check your internet and try again.'; }
+    $('gateBtn').disabled = false; $('gateBtn').textContent = 'Continue';
+  });
+
+  async function boot(){
+    renderSlots(); renderMine();
+    if (!store.get('code','')) return showGate();
+    try {
+      const j = await api('config');
+      if (j.ok) start(j.data);
+      else showGate(j.error === 'code' ? 'Please enter the current access code.' : j.message);
+    } catch(e){ S.loading = false; $('slots').innerHTML = '<div class="empty">You\'re offline. Connect to the internet to see free times.</div>'; }
+  }
+
+  let started = false;
+  function start(cfg){
+    S.cfg = cfg; S.today = cfg.today; S.now = cfg.nowMinutes;
+    if (!cfg.labs.some(l => l.id === S.lab)) S.lab = cfg.labs[0].id;
+    S.date = cfg.dates.length ? cfg.dates[0].date : null;
+    renderLabs(); renderDates(); refresh(); syncMine();
+    if (!started) {
+      started = true;
+      setInterval(() => { if (!document.hidden && !S.busy && S.tab === 'book') refresh(true); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && S.cfg) { refresh(true); syncMine(); } });
+    }
+  }
+
+  async function refresh(quiet){
+    if (!S.cfg) return;
+    if (!S.date) { S.loading = false; return renderSlots(); }
+    if (!quiet) { S.loading = true; renderSlots(); }
+    const want = S.date;
+    try {
+      const j = await api('booked', { date: want });
+      if (want !== S.date) return;
+      if (j.ok) { S.booked = j.data.booked; S.today = j.data.today; S.now = j.data.nowMinutes; }
+    } catch(e){ if (!quiet) toast('Could not load times. Check your connection.'); }
+    S.loading = false; renderSlots();
+  }
+
+  // ── Book tab ──
+  function renderLabs(){
+    const el = $('labs'); el.innerHTML = '';
+    S.cfg.labs.forEach(l => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = l.name;
+      b.setAttribute('aria-pressed', String(l.id === S.lab));
+      b.onclick = () => { S.lab = l.id; store.set('lab', l.id); renderLabs(); renderSlots(); };
+      el.appendChild(b);
+    });
+  }
+  function renderDates(){
+    const el = $('dates'); el.innerHTML = '';
+    S.cfg.dates.forEach(d => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(d.date === S.date));
+      b.setAttribute('aria-label', d.label);
+      b.innerHTML = '<span class="wd"></span><span class="dn"></span><span class="mo"></span>';
+      b.children[0].textContent = d.date === S.today ? 'Today' : d.weekday;
+      b.children[1].textContent = d.day;
+      b.children[2].textContent = d.month;
+      b.onclick = () => { S.date = d.date; S.booked = {}; renderDates(); refresh(); };
+      el.appendChild(b);
+    });
+  }
+  function renderSlots(){
+    const el = $('slots'), count = $('count');
+    el.innerHTML = '';
+    if (S.loading || !S.cfg) {
+      count.textContent = '';
+      for (let i = 0; i < 6; i++) { const d = document.createElement('div'); d.className = 'skeleton'; el.appendChild(d); }
+      return;
+    }
+    if (!S.date) { count.textContent = ''; el.innerHTML = '<div class="empty">No days are open for booking right now.</div>'; return; }
+    const taken = S.booked[S.lab] || [];
+    let free = 0;
+    S.cfg.slots.forEach(s => {
+      const isTaken = taken.indexOf(s.start) !== -1;
+      const isPast = S.date === S.today && toMin(s.start) <= S.now;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'slot';
+      b.disabled = isTaken || isPast;
+      if (!b.disabled) free++;
+      b.innerHTML = '<span class="t"></span><span class="s"></span>';
+      b.children[0].textContent = s.label;
+      b.children[1].textContent = isTaken ? 'Booked' : isPast ? 'Time passed' : 'Available';
+      b.onclick = () => openBook(s);
+      el.appendChild(b);
+    });
+    count.textContent = free + ' of ' + S.cfg.slots.length + ' free';
+  }
+
+  const labName = id => (S.cfg.labs.filter(l => l.id === id)[0] || {}).name || '';
+  const dateLabel = d => (S.cfg.dates.filter(x => x.date === d)[0] || {}).label || d;
+
+  // ── Sheet (bottom drawer) ──
+  function openSheet(view){
+    ['form','done','confirmCancel'].forEach(v => $(v).hidden = v !== view);
+    $('overlay').classList.add('open'); $('overlay').setAttribute('aria-hidden','false');
+  }
+  function closeSheet(){
+    if (S.busy) return;
+    $('overlay').classList.remove('open'); $('overlay').setAttribute('aria-hidden','true');
+    S.slot = null; S.cancelling = null;
+  }
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheet);
+  $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeSheet(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+  function openBook(slot){
+    S.slot = slot;
+    $('when').textContent = labName(S.lab) + ' · ' + dateLabel(S.date) + ' · ' + slot.label;
+    const me = store.get('me', {});
+    $('name').value = me.name || ''; $('cls').value = me.cls || ''; $('purpose').value = '';
+    $('err').textContent = '';
+    openSheet('form');
+    setTimeout(() => (me.name ? $('purpose') : $('name')).focus(), 220);
+  }
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (S.busy || !S.slot) return;
+    const name = $('name').value.trim(), cls = $('cls').value.trim(), purpose = $('purpose').value.trim();
+    if (!name) { $('err').textContent = 'Please enter your name.'; return $('name').focus(); }
+    if (!cls) { $('err').textContent = 'Please enter your class or grade.'; return $('cls').focus(); }
+    store.set('me', { name, cls });
+    S.busy = true; $('confirm').disabled = true; $('confirm').textContent = 'Booking…'; $('err').textContent = '';
+    try {
+      const j = await api('book', { lab:S.lab, date:S.date, start:S.slot.start, name, cls, purpose }, true);
+      if (j.ok) {
+        const b = j.data;
+        const mine = store.get('mine', []); mine.push({ id:b.id, key:b.key, lab:b.lab, date:b.date, dateLabel:b.dateLabel, start:b.start, end:b.end, time:b.time, status:'booked' });
+        store.set('mine', mine); renderMine();
+        $('doneWhen').textContent = b.lab + ' · ' + b.dateLabel + ' · ' + b.time;
+        $('doneRef').textContent = b.id;
+        openSheet('done');
+      } else if (j.error === 'taken') {
+        S.busy = false; closeSheet(); toast(j.message);
+      } else if (j.error !== 'code') {
+        $('err').textContent = j.message || 'Something went wrong.';
+      }
+    } catch(err) {
+      $('err').textContent = 'Could not reach the booking system. Check your connection.';
+    }
+    S.busy = false; $('confirm').disabled = false; $('confirm').textContent = 'Confirm booking';
+    refresh(true);
+  });
+
+  // ── My bookings ──
+  function nowLocal(){ const d = new Date(), p = n => ('0'+n).slice(-2); return { date: d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()), min: d.getHours()*60+d.getMinutes() }; }
+  function isPast(b){ const n = nowLocal(); return b.date < n.date || (b.date === n.date && toMin(b.end) <= n.min); }
+
+  function renderMine(){
+    const mine = store.get('mine', []).slice().sort((a,b) => (a.date+a.start).localeCompare(b.date+b.start));
+    const up = mine.filter(b => b.status !== 'cancelled' && !isPast(b));
+    const old = mine.filter(b => b.status === 'cancelled' || isPast(b)).reverse().slice(0, 20);
+    const badge = $('badge'); badge.hidden = !up.length; badge.textContent = up.length;
+    const U = $('upcoming'); U.innerHTML = '';
+    if (!up.length) U.innerHTML = '<div class="empty">No upcoming bookings yet.<br>Pick a free time on the <b>Book</b> tab.</div>';
+    up.forEach(b => U.appendChild(card(b, 'upcoming')));
+    $('pastWrap').hidden = !old.length;
+    const P = $('past'); P.innerHTML = '';
+    old.forEach(b => P.appendChild(card(b, b.status === 'cancelled' ? 'cancelled' : 'past')));
+  }
+  function card(b, kind){
+    const c = document.createElement('div');
+    c.className = 'card' + (kind === 'upcoming' ? '' : ' dim');
+    c.innerHTML = '<h3></h3><span class="pill"></span><div class="when"></div><div class="ref"></div>';
+    c.children[0].textContent = b.lab;
+    c.children[1].textContent = kind === 'upcoming' ? 'Booked' : kind === 'cancelled' ? 'Cancelled' : 'Done';
+    c.children[1].className = 'pill ' + kind;
+    c.children[2].textContent = b.dateLabel + ' · ' + b.time;
+    c.children[3].textContent = 'Ref ' + b.id;
+    if (kind === 'upcoming') {
+      const a = document.createElement('div'); a.className = 'act';
+      const btn = document.createElement('button'); btn.className = 'link'; btn.textContent = 'Cancel booking';
+      btn.onclick = () => { S.cancelling = b; $('cancelWhen').textContent = b.lab + ' · ' + b.dateLabel + ' · ' + b.time; $('cancelErr').textContent = ''; openSheet('confirmCancel'); };
+      a.appendChild(btn); c.appendChild(a);
+    }
+    return c;
+  }
+  $('cancelYes').onclick = async () => {
+    const b = S.cancelling; if (!b || S.busy) return;
+    S.busy = true; $('cancelYes').disabled = true; $('cancelYes').textContent = 'Cancelling…';
+    try {
+      const j = await api('cancel', { id:b.id, key:b.key }, true);
+      if (j.ok || j.error === 'notfound') {
+        setStatus(b.id, 'cancelled'); S.busy = false; closeSheet(); toast('Booking cancelled. The slot is free again.'); refresh(true);
+      } else if (j.error !== 'code') { $('cancelErr').textContent = j.message || 'Could not cancel.'; }
+    } catch(e) { $('cancelErr').textContent = 'No connection. Please try again.'; }
+    S.busy = false; $('cancelYes').disabled = false; $('cancelYes').textContent = 'Cancel booking';
+  };
+  function setStatus(id, status){ const mine = store.get('mine', []); mine.forEach(b => { if (b.id === id) b.status = status; }); store.set('mine', mine); renderMine(); }
+
+  async function syncMine(){
+    const mine = store.get('mine', []).filter(b => b.status !== 'cancelled' && !isPast(b));
+    if (!mine.length) return renderMine();
+    try {
+      const j = await api('status', { ids: mine.map(b => b.id).join(',') });
+      if (j.ok) { const all = store.get('mine', []); all.forEach(b => { if (j.data[b.id] === 'cancelled') b.status = 'cancelled'; }); store.set('mine', all); }
+    } catch(e){}
+    renderMine();
+  }
+
+  // ── Tabs ──
+  function setTab(t){
+    S.tab = t;
+    $('tabBook').hidden = t !== 'book'; $('tabMine').hidden = t !== 'mine';
+    $('navBook').setAttribute('aria-selected', String(t === 'book'));
+    $('navMine').setAttribute('aria-selected', String(t === 'mine'));
+    $('barTitle').textContent = t === 'book' ? 'Book a lab' : 'My bookings';
+    $('barSub').textContent = t === 'book' ? 'E-Learning & AutoCAD · 30-min sessions' : 'Bookings made on this device';
+    $('main').scrollTop = 0;
+    if (t === 'mine') syncMine(); else refresh(true);
+  }
+  $('navBook').onclick = () => setTab('book');
+  $('navMine').onclick = () => setTab('mine');
+
+  // ── Install ──
+  let deferred = null;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferred = e;
+    if (!standalone) { $('installBtn').hidden = false; $('installCard').hidden = false; }
+  });
+  async function install(){
+    if (!deferred) return;
+    deferred.prompt();
+    try { await deferred.userChoice; } catch(e){}
+    deferred = null; $('installBtn').hidden = true; $('installCard').hidden = true;
+  }
+  $('installBtn').onclick = install; $('installBtn2').onclick = install;
+  window.addEventListener('appinstalled', () => { $('installBtn').hidden = true; $('installCard').hidden = true; toast('Installed! Open Lab Booking from your home screen.'); });
+
+  let tt;
+  function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3500); }
+
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  boot();
+})();
+</script>
+</body>
+</html>
